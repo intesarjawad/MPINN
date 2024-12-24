@@ -33,25 +33,28 @@ class DataProcessor:
         Args:
             data: Dictionary containing HF and LF data
         """
+        # Compute input stats from both HF and LF data
+        all_inputs = []
+        for fidelity in ['high_fidelity', 'low_fidelity']:
+            if fidelity in data:
+                all_inputs.append(data[fidelity]['inputs'])
+        
         self.stats = {
-            'inputs': self._compute_stats(
-                np.vstack([
-                    data['high_fidelity']['inputs'],
-                    data['low_fidelity']['inputs']
-                ])
-            )
+            'inputs': self._compute_stats(np.vstack(all_inputs))
         }
         
-        # Compute stats for each output feature
+        # Compute output stats for each feature
         self.stats['outputs'] = {}
         for feature in data['high_fidelity']['outputs'].keys():
-            self.stats['outputs'][feature] = self._compute_stats(
-                np.vstack([
-                    data['high_fidelity']['outputs'][feature],
-                    data['low_fidelity']['outputs'][feature]
-                ])
-            )
+            all_outputs = []
+            for fidelity in ['high_fidelity', 'low_fidelity']:
+                if fidelity in data and feature in data[fidelity]['outputs']:
+                    all_outputs.append(data[fidelity]['outputs'][feature])
             
+            self.stats['outputs'][feature] = self._compute_stats(
+                np.concatenate(all_outputs)
+            )
+        
         self._is_fitted = True
         
     def transform(
@@ -153,6 +156,12 @@ class DataProcessor:
         Returns:
             Standardized data array
         """
+        # Ensure stats match data shape for broadcasting
+        if len(stats['mean'].shape) > 1:
+            stats['mean'] = stats['mean'].reshape(-1)
+        if len(stats['std'].shape) > 1:
+            stats['std'] = stats['std'].reshape(-1)
+        
         return (data - stats['mean']) / (stats['std'] + 1e-8)
     
     @staticmethod

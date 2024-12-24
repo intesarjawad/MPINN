@@ -14,7 +14,7 @@ def create_config():
     """Create MPINN configuration."""
     return MPINNConfig(
         # Data configuration
-        data_dir=Path("data"),
+        data_dir=Path("data-one-component-system"),
         input_features=['temperature', 'density'],
         output_features=['energy', 'pressure', 'diffusion'],
         hf_fractions=[0.1, 0.2, 0.3, 0.4, 0.5, 1.0],

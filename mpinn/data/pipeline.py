@@ -5,6 +5,7 @@ This module combines data loading and processing into a unified pipeline
 for preparing molecular dynamics data for MPINN training.
 """
 
+import numpy as np
 from pathlib import Path
 from typing import List, Dict, Union, Optional
 
