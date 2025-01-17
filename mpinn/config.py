@@ -3,7 +3,7 @@ Configuration management for MPINN.
 """
 
 import yaml
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Optional
 from pathlib import Path
 
@@ -18,8 +18,8 @@ class MPINNConfig:
     hf_fractions: List[float]
     
     # Model architecture
-    hidden_layers_lf: List[int] = (20, 20, 20, 20)
-    hidden_layers_hf: List[int] = (20, 20)
+    hidden_layers_lf: List[int] = field(default_factory=lambda: [20, 20, 20, 20])
+    hidden_layers_hf: List[int] = field(default_factory=lambda: [20, 20])
     activation: str = 'tanh'
     l2_reg: float = 0.001
     
@@ -31,10 +31,12 @@ class MPINNConfig:
     hf_patience: int = 30
     
     # Optimizer settings
-    optimizer_config: Dict = {
-        'lf': {'optimizer': 'Adam', 'learning_rate': 0.001},
-        'hf': {'optimizer': 'Adam', 'learning_rate': 0.0005}
-    }
+    optimizer_config: Dict = field(
+        default_factory=lambda: {
+            'lf': {'optimizer': 'Adam', 'learning_rate': 0.001},
+            'hf': {'optimizer': 'Adam', 'learning_rate': 0.0005}
+        }
+    )
     
     # Output settings
     save_dir: Optional[Path] = None
@@ -67,9 +69,12 @@ class MPINNConfig:
     
     def validate(self):
         """Validate configuration settings."""
-        # Validate paths
+        # Validate data directory
         if not self.data_dir.exists():
-            raise ValueError(f"Data directory does not exist: {self.data_dir}")
+            raise ValueError(
+                f"Data directory does not exist: {self.data_dir}\n"
+                "Please ensure the correct data path is provided."
+            )
         
         # Validate features
         if not self.input_features:
@@ -81,7 +86,8 @@ class MPINNConfig:
         if not all(0 < f <= 1 for f in self.hf_fractions):
             raise ValueError("HF fractions must be between 0 and 1")
         if 1.0 not in self.hf_fractions:
-            raise ValueError("HF fractions must include 1.0 for final evaluation")
+            self.hf_fractions.append(1.0)
+            print("Added 1.0 to hf_fractions for final evaluation")
         
         # Validate network architecture
         if not self.hidden_layers_lf or not self.hidden_layers_hf:

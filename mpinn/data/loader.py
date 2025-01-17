@@ -55,11 +55,25 @@ class DataLoader:
             ├── E_low_fidelity.txt
             └── ...
         """
+        if not self.data_dir.exists():
+            raise FileNotFoundError(f"Data directory not found: {self.data_dir}")
+        
         required_dirs = ['high_fidelity', 'low_fidelity']
         for dir_name in required_dirs:
-            if not (self.data_dir / dir_name).exists():
+            dir_path = self.data_dir / dir_name
+            if not dir_path.exists():
                 raise FileNotFoundError(
-                    f"Required directory '{dir_name}' not found in {self.data_dir}"
+                    f"Required directory not found: {dir_path}\n"
+                    "Expected structure:\n"
+                    "data/\n"
+                    "├── high_fidelity/\n"
+                    "│   ├── T_rho_high_fidelity.txt\n"
+                    "│   ├── energy_high_fidelity.txt\n"
+                    "│   └── ...\n"
+                    "└── low_fidelity/\n"
+                    "    ├── T_rho_low_fidelity.txt\n"
+                    "    ├── energy_low_fidelity.txt\n"
+                    "    └── ..."
                 )
     
     def load_data(
@@ -113,24 +127,51 @@ class DataLoader:
         Returns:
             Dictionary containing inputs and outputs
         """
-        # Load input features
-        input_file = f"T_rho_{fidelity}.txt"
+        # Feature name mapping
+        feature_map = {
+            'temperature': 'T',  # T from T_rho
+            'density': 'rho',    # rho from T_rho
+            'energy': 'E',       # E_high_fidelity*.txt
+            'pressure': 'P',     # P_high_fidelity*.txt
+            'diffusion': 'D'     # D_high_fidelity*.txt
+        }
+        
+        fidelity_dir = self.data_dir / fidelity
+        
+        # Load input features (T_rho file)
         if fraction < 1.0 and fidelity == 'high_fidelity':
             input_file = f"T_rho_{fidelity}_{int(fraction*100)}.txt"
-            
-        inputs = np.loadtxt(self.data_dir / fidelity / input_file)
+        else:
+            input_file = f"T_rho_{fidelity}.txt"
+        
+        input_path = fidelity_dir / input_file
+        if not input_path.exists():
+            raise FileNotFoundError(
+                f"Input file not found: {input_path}\n"
+                f"Looking for temperature/density data"
+            )
+        
+        inputs = np.loadtxt(input_path)
         
         # Load output features
         outputs = {}
-        for feature in self.output_features:
-            output_file = f"{feature}_{fidelity}.txt"
-            if fraction < 1.0 and fidelity == 'high_fidelity':
-                output_file = f"{feature}_{fidelity}_{int(fraction*100)}.txt"
-                
-            outputs[feature] = np.loadtxt(
-                self.data_dir / fidelity / output_file
-            )
+        for feature_name in self.output_features:
+            short_name = feature_map.get(feature_name, feature_name[0].upper())
             
+            if fraction < 1.0 and fidelity == 'high_fidelity':
+                output_file = f"{short_name}_{fidelity}_{int(fraction*100)}.txt"
+            else:
+                output_file = f"{short_name}_{fidelity}.txt"
+            
+            output_path = fidelity_dir / output_file
+            if not output_path.exists():
+                raise FileNotFoundError(
+                    f"Output file not found: {output_path}\n"
+                    f"Looking for {feature_name} data"
+                )
+            
+            outputs[feature_name] = np.loadtxt(output_path)
+        
         return {
             'inputs': inputs,
             'outputs': outputs
